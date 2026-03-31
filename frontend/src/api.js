@@ -1,4 +1,4 @@
-const BASE = "http://localhost:4000/api";
+const BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api").replace(/\/$/, "");
 
 function authHeaders(token) {
   return {

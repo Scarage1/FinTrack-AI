@@ -1,10 +1,10 @@
-# Expense Tracker with Analytics + ML
+# FinTrack AI
 
-Portfolio-grade starter project with:
+A production-oriented expense intelligence platform with:
 
 - React frontend dashboard
-- Node.js backend API + PostgreSQL persistence
-- Optional Python FastAPI ML microservice
+- Node.js backend API with PostgreSQL
+- Python FastAPI ML microservice for forecasting and categorization
 
 ## Project Structure
 
@@ -14,7 +14,7 @@ Portfolio-grade starter project with:
 - `ml-service/` → FastAPI service (classification + regression baseline)
 - `docker-compose.yml` → local PostgreSQL container
 
-## Implemented Features
+## Core Features
 
 - Expense CRUD (`create`, `list`, `delete`)
 - Basic auto-categorization (keyword + fallback)
@@ -181,6 +181,71 @@ Quality artifacts uploaded by CI:
 - Backend: JUnit + coverage reports
 - Frontend: Playwright JUnit + HTML report
 
+## Production readiness & Azure deployment
+
+### Production configuration
+
+- Frontend API base URL is now environment-driven via `VITE_API_BASE_URL`.
+- Production env templates:
+  - `frontend/.env.production.example`
+  - `backend/.env.production.example`
+- Container images:
+  - `frontend/Dockerfile`
+  - `backend/Dockerfile`
+  - `ml-service/Dockerfile`
+- Local production-like orchestration:
+  - `docker-compose.prod.yml`
+
+Run locally in production mode:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+### Azure deployment (Container Apps)
+
+Prepared assets:
+
+- Deployment script: `deploy/azure/deploy.sh`
+- Guide: `deploy/azure/README.md`
+- Manual GitHub Action: `.github/workflows/deploy-azure.yml`
+
+### Deploy through GitHub Actions (recommended)
+
+1. Add repository secrets:
+
+  - `AZURE_CREDENTIALS`
+  - `AZ_SUBSCRIPTION_ID`
+  - `AZ_LOCATION`
+  - `AZ_RESOURCE_GROUP`
+  - `AZ_ACR_NAME`
+  - `AZ_CONTAINERAPPS_ENV`
+  - `AZ_DB_SERVER`
+  - `AZ_DB_ADMIN_USER`
+  - `AZ_DB_ADMIN_PASSWORD`
+  - `JWT_SECRET`
+
+2. Optional secrets (recommended):
+
+  - `CORS_ORIGIN`
+  - `AZ_DB_NAME`
+  - `BACKEND_APP_NAME`
+  - `FRONTEND_APP_NAME`
+  - `ML_APP_NAME`
+
+3. Open **Actions** → **Deploy to Azure Container Apps** → **Run workflow**.
+
+The workflow builds Docker images on the runner and pushes directly to ACR (no ACR Tasks dependency), then provisions or updates Container Apps and PostgreSQL resources.
+
+One-time local deployment:
+
+```bash
+chmod +x deploy/azure/deploy.sh
+./deploy/azure/deploy.sh
+```
+
+For required variables and hardening checklist, see `deploy/azure/README.md`.
+
 Current backend coverage thresholds (Vitest):
 
 - Statements: 60%
@@ -229,14 +294,6 @@ Auth endpoints:
 - `POST /api/auth/refresh`
 - `POST /api/auth/logout`
 
-## Interview Notes
+## License
 
-- Classification baseline: category from transaction description
-- Regression baseline: end-of-month spend estimate
-- UI uses modern dashboard layout (sidebar + KPI tiles + multi-chart analytics)
-- Extend with:
-  - Prisma ORM migrations
-  - Redis caching
-  - model retraining pipeline
-  - anomaly detection
-  - WebSocket real-time alerts
+MIT. See `LICENSE`.

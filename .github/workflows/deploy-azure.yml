@@ -1,0 +1,51 @@
+name: Deploy to Azure Container Apps
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-azure-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Verify toolchain
+        run: |
+          az version
+          docker --version
+
+      - name: Deploy
+        env:
+          AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+          AZ_LOCATION: ${{ secrets.AZ_LOCATION }}
+          AZ_RESOURCE_GROUP: ${{ secrets.AZ_RESOURCE_GROUP }}
+          AZ_ACR_NAME: ${{ secrets.AZ_ACR_NAME }}
+          AZ_CONTAINERAPPS_ENV: ${{ secrets.AZ_CONTAINERAPPS_ENV }}
+          AZ_DB_SERVER: ${{ secrets.AZ_DB_SERVER }}
+          AZ_DB_ADMIN_USER: ${{ secrets.AZ_DB_ADMIN_USER }}
+          AZ_DB_ADMIN_PASSWORD: ${{ secrets.AZ_DB_ADMIN_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+          AZ_DB_NAME: ${{ secrets.AZ_DB_NAME }}
+          BACKEND_APP_NAME: ${{ secrets.BACKEND_APP_NAME }}
+          FRONTEND_APP_NAME: ${{ secrets.FRONTEND_APP_NAME }}
+          ML_APP_NAME: ${{ secrets.ML_APP_NAME }}
+        run: |
+          set -euo pipefail
+          chmod +x deploy/azure/deploy.sh
+          ./deploy/azure/deploy.sh

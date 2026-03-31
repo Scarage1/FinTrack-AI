@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/.vite
+**/.DS_Store
+**/.env
+**/.env.*
+**/coverage
+**/test-results
+**/playwright-report
+**/.venv
+**/venv
+**/__pycache__
+.git
+.gitignore
+README.md
