@@ -29,6 +29,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      deployments: write
 
     steps:
       - name: Checkout
@@ -112,3 +113,20 @@ jobs:
           export AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:-$OIDC_SUBSCRIPTION_ID}"
           chmod +x deploy/azure/deploy.sh
           ./deploy/azure/deploy.sh
+
+      - name: Prune old production deployments
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ids=$(gh api "repos/${GITHUB_REPOSITORY}/deployments?environment=production" --paginate --jq '.[].id')
+          keep=$(echo "$ids" | head -n 1)
+          echo "Keeping deployment $keep"
+
+          echo "$ids" | tail -n +2 | while read -r id; do
+            [ -z "$id" ] && continue
+            gh api "repos/${GITHUB_REPOSITORY}/deployments/$id/statuses" -f state=inactive -f description='Auto-pruned old deployment' >/dev/null
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/deployments/$id" >/dev/null
+            echo "Deleted deployment $id"
+          done
