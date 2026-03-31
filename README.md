@@ -214,7 +214,8 @@ Prepared assets:
 
 1. Add repository secrets:
 
-  - `AZURE_CREDENTIALS`
+  - `AZURE_CLIENT_ID`
+  - `AZURE_TENANT_ID`
   - `AZ_SUBSCRIPTION_ID`
   - `AZ_LOCATION`
   - `AZ_RESOURCE_GROUP`
