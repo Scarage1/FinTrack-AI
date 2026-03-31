@@ -20,6 +20,6 @@
     "@axe-core/playwright": "^4.11.1",
     "@playwright/test": "^1.49.1",
     "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.8"
+    "vite": "^8.0.3"
   }
 }
