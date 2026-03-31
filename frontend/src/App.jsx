@@ -17,8 +17,28 @@ import {
 const COLORS = ["#0070f3", "#7928ca", "#10b981", "#f5a623", "#e00000", "#333333"];
 const TrendAndDistributionCharts = lazy(() => import("./TrendAndDistributionCharts"));
 const CategorySpendBarChart = lazy(() => import("./CategorySpendBarChart"));
-const GUEST_EMAIL = "guest@fintrack.app";
-const GUEST_PASSWORD = "Guest@12345";
+
+function getOrCreateGuestCredentials() {
+  if (typeof window === "undefined") {
+    return { email: "guest@fintrack.app", password: "Guest@12345" };
+  }
+
+  const EMAIL_KEY = "expense_guest_email";
+  const PASSWORD_KEY = "expense_guest_password";
+
+  let email = localStorage.getItem(EMAIL_KEY) || "";
+  let password = localStorage.getItem(PASSWORD_KEY) || "";
+
+  if (!email || !password) {
+    const seed = `${Date.now()}${Math.floor(Math.random() * 100000)}`;
+    email = `guest_${seed}@fintrack.app`;
+    password = `Guest@${seed}Aa`;
+    localStorage.setItem(EMAIL_KEY, email);
+    localStorage.setItem(PASSWORD_KEY, password);
+  }
+
+  return { email, password };
+}
 
 function currentMonthString() {
   const now = new Date();
@@ -59,6 +79,7 @@ export default function App() {
   const [budgetForm, setBudgetForm] = useState({ category: "Food", limit: "" });
   const loadAbortRef = useRef(null);
   const loadRequestIdRef = useRef(0);
+  const guestCredentials = useMemo(() => getOrCreateGuestCredentials(), []);
 
   const chartLoadingFallback = (
     <div className="card chart">
@@ -144,13 +165,13 @@ export default function App() {
         try {
           payload = await register({
             name: "Guest User",
-            email: GUEST_EMAIL,
-            password: GUEST_PASSWORD
+            email: guestCredentials.email,
+            password: guestCredentials.password
           });
         } catch (registerError) {
           const message = String(registerError?.message || "").toLowerCase();
           if (!message.includes("exists")) throw registerError;
-          payload = await login({ email: GUEST_EMAIL, password: GUEST_PASSWORD });
+          payload = await login({ email: guestCredentials.email, password: guestCredentials.password });
         }
 
         if (cancelled) return;
@@ -175,7 +196,7 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [token]);
+  }, [token, guestCredentials]);
 
   const pieData = useMemo(
     () =>
