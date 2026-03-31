@@ -9,7 +9,6 @@ import {
   getExpenses,
   getInsights,
   login,
-  logoutSession,
   getPrediction,
   register,
   upsertBudget
@@ -18,6 +17,8 @@ import {
 const COLORS = ["#0070f3", "#7928ca", "#10b981", "#f5a623", "#e00000", "#333333"];
 const TrendAndDistributionCharts = lazy(() => import("./TrendAndDistributionCharts"));
 const CategorySpendBarChart = lazy(() => import("./CategorySpendBarChart"));
+const GUEST_EMAIL = "guest@fintrack.app";
+const GUEST_PASSWORD = "Guest@12345";
 
 function currentMonthString() {
   const now = new Date();
@@ -30,11 +31,9 @@ export default function App() {
     const raw = localStorage.getItem("expense_user");
     return raw ? JSON.parse(raw) : null;
   });
-  const [authMode, setAuthMode] = useState("login");
-  const [showAuth, setShowAuth] = useState(false);
+  const [showLanding, setShowLanding] = useState(true);
+  const [bootstrappingSession, setBootstrappingSession] = useState(() => !localStorage.getItem("expense_token"));
   const [activeTab, setActiveTab] = useState("Dashboard");
-  const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
-  const [authError, setAuthError] = useState("");
 
   const [month, setMonth] = useState(currentMonthString());
   const [expenses, setExpenses] = useState([]);
@@ -105,7 +104,11 @@ export default function App() {
       if (e?.name === "AbortError") return;
       setError(e.message);
       if (String(e.message).toLowerCase().includes("token") || String(e.message).toLowerCase().includes("bearer")) {
-        onLogout();
+        localStorage.removeItem("expense_token");
+        localStorage.removeItem("expense_refresh_token");
+        localStorage.removeItem("expense_user");
+        setToken("");
+        setUser(null);
       }
     } finally {
       if (loadAbortRef.current === controller) {
@@ -125,6 +128,54 @@ export default function App() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (token) {
+      setBootstrappingSession(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function ensureGuestSession() {
+      setBootstrappingSession(true);
+      try {
+        let payload;
+        try {
+          payload = await register({
+            name: "Guest User",
+            email: GUEST_EMAIL,
+            password: GUEST_PASSWORD
+          });
+        } catch (registerError) {
+          const message = String(registerError?.message || "").toLowerCase();
+          if (!message.includes("exists")) throw registerError;
+          payload = await login({ email: GUEST_EMAIL, password: GUEST_PASSWORD });
+        }
+
+        if (cancelled) return;
+        localStorage.setItem("expense_token", payload.token);
+        localStorage.setItem("expense_refresh_token", payload.refreshToken || "");
+        localStorage.setItem("expense_user", JSON.stringify(payload.user));
+        setToken(payload.token);
+        setUser(payload.user);
+        setError("");
+      } catch (sessionError) {
+        if (!cancelled) {
+          setError(sessionError?.message || "Unable to start guest session");
+        }
+      } finally {
+        if (!cancelled) {
+          setBootstrappingSession(false);
+        }
+      }
+    }
+
+    ensureGuestSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
 
   const pieData = useMemo(
     () =>
@@ -225,66 +276,21 @@ export default function App() {
     }
   }
 
-  async function onAuthSubmit(e) {
-    e.preventDefault();
-    try {
-      setAuthError("");
-      const payload =
-        authMode === "register"
-          ? await register({
-              name: authForm.name || "User",
-              email: authForm.email,
-              password: authForm.password
-            })
-          : await login({ email: authForm.email, password: authForm.password });
-
-      localStorage.setItem("expense_token", payload.token);
-      localStorage.setItem("expense_refresh_token", payload.refreshToken || "");
-      localStorage.setItem("expense_user", JSON.stringify(payload.user));
-      setToken(payload.token);
-      setUser(payload.user);
-      setShowAuth(false);
-      setAuthForm({ name: "", email: "", password: "" });
-    } catch (e) {
-      setAuthError(e.message);
-    }
-  }
-
-  async function onLogout() {
-    try {
-      const refreshToken = localStorage.getItem("expense_refresh_token") || "";
-      await logoutSession(refreshToken);
-    } catch {
-      // ignore logout revoke errors on client
-    }
-    localStorage.removeItem("expense_token");
-    localStorage.removeItem("expense_refresh_token");
-    localStorage.removeItem("expense_user");
-    setToken("");
-    setUser(null);
-    setShowAuth(false);
-  }
-
   const isDashboardTab = activeTab === "Dashboard";
   const isAnalyticsTab = activeTab === "Analytics";
   const isBudgetsTab = activeTab === "Budgets";
   const isPredictionsTab = activeTab === "Predictions";
   const isInsightsTab = activeTab === "Insights";
 
-  if (!token && !showAuth) {
+  if (showLanding) {
     return (
       <div className="landing-page">
         <header className="landing-header">
           <div className="landing-brand">FinTrack AI</div>
           <nav className="landing-nav">
-            <button className="ghost" onClick={() => {
-              setAuthMode("login");
-              setShowAuth(true);
-            }}>Sign In</button>
-            <button className="hero-btn-primary" style={{ padding: "10px 20px" }} onClick={() => {
-              setAuthMode("register");
-              setShowAuth(true);
-            }}>Get Started</button>
+            <button className="hero-btn-primary" style={{ padding: "10px 20px" }} onClick={() => setShowLanding(false)}>
+              Go to Dashboard
+            </button>
           </nav>
         </header>
 
@@ -297,14 +303,8 @@ export default function App() {
                 Instantly categorize spending, detect anomalies, and forecast your financial future with enterprise-grade machine learning models built for personal finance.
               </p>
               <div className="hero-actions">
-                <button className="hero-btn-primary" onClick={() => {
-                  setAuthMode("register");
-                  setShowAuth(true);
-                }}>Start Tracking Free</button>
-                <button className="hero-btn-secondary" onClick={() => {
-                  setAuthMode("login");
-                  setShowAuth(true);
-                }}>View Live Demo</button>
+                <button className="hero-btn-primary" onClick={() => setShowLanding(false)}>Start Tracking Free</button>
+                <button className="hero-btn-secondary" onClick={() => setShowLanding(false)}>View Live Demo</button>
               </div>
               <div className="hero-features">
                 <span>✓ ML Categorization</span>
@@ -357,47 +357,17 @@ export default function App() {
     );
   }
 
-  if (!token && showAuth) {
+  if (!token || bootstrappingSession) {
     return (
       <div className="shell auth-wrap">
         <main>
           <div className="card auth-card">
-            <h1>Expense Tracker + ML</h1>
-            <p>{authMode === "login" ? "Sign in to continue" : "Create your account"}</p>
-            <form onSubmit={onAuthSubmit} className="stack">
-              {authMode === "register" && (
-                <input
-                  aria-label="Name"
-                  placeholder="Name"
-                  value={authForm.name}
-                  onChange={(e) => setAuthForm((prev) => ({ ...prev, name: e.target.value }))}
-                />
-              )}
-              <input
-                aria-label="Email"
-                type="email"
-                placeholder="Email"
-                value={authForm.email}
-                onChange={(e) => setAuthForm((prev) => ({ ...prev, email: e.target.value }))}
-              />
-              <input
-                aria-label="Password"
-                type="password"
-                placeholder="Password"
-                value={authForm.password}
-                onChange={(e) => setAuthForm((prev) => ({ ...prev, password: e.target.value }))}
-              />
-              <button type="submit" style={{ marginTop: '8px' }}>{authMode === "login" ? "Login" : "Register"}</button>
-            </form>
-            {authError ? <p className="error">{authError}</p> : null}
-            <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
-              <button type="button" className="ghost" style={{ flex: 1, padding: '10px' }} onClick={() => setShowAuth(false)}>
-                Back
-              </button>
-              <button type="button" className="ghost" style={{ flex: 2, padding: '10px' }} onClick={() => setAuthMode((m) => (m === "login" ? "register" : "login"))}>
-                {authMode === "login" ? "Create an account" : "Login instead"}
-              </button>
-            </div>
+            <h1>Starting dashboard...</h1>
+            <p>Preparing guest session and loading your workspace.</p>
+            {error ? <p className="error">{error}</p> : null}
+            <button type="button" className="ghost" onClick={() => window.location.reload()} style={{ marginTop: "12px" }}>
+              Retry
+            </button>
           </div>
         </main>
       </div>
@@ -428,8 +398,8 @@ export default function App() {
           </div>
           <div className="header-actions">
             <input aria-label="Select month" type="month" value={month} onChange={(e) => setMonth(e.target.value)} />
-            <button className="ghost" onClick={onLogout}>
-              Logout
+            <button className="ghost" onClick={() => setShowLanding(true)}>
+              Home
             </button>
           </div>
         </header>
