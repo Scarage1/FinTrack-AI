@@ -203,7 +203,8 @@ const corsOrigins = String(process.env.CORS_ORIGIN || "")
   .map((v) => v.trim())
   .filter(Boolean);
 
-app.use(cors(corsOrigins.length ? { origin: corsOrigins } : undefined));
+const allowAllOrigins = corsOrigins.includes("*");
+app.use(cors(allowAllOrigins || corsOrigins.length === 0 ? undefined : { origin: corsOrigins }));
 app.use(helmet());
 app.use(compression());
 app.use((req, res, next) => {
