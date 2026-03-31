@@ -117,7 +117,7 @@ jobs:
 
       - name: Upload backend test artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-test-artifacts
           path: |
@@ -188,7 +188,7 @@ jobs:
 
       - name: Upload frontend e2e artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-e2e-artifacts
           path: |
@@ -221,7 +221,7 @@ jobs:
         run: python evaluate.py
 
       - name: Upload ML evaluation report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ml-evaluation-report
           path: ml-service/evaluation_report.json
