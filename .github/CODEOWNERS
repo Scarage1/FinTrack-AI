@@ -1,0 +1,9 @@
+# Default code owners
+* @Scarage1
+
+# Critical deployment and infra paths
+/.github/workflows/ @Scarage1
+/deploy/azure/ @Scarage1
+/backend/ @Scarage1
+/frontend/ @Scarage1
+/ml-service/ @Scarage1

@@ -6,6 +6,15 @@ A production-oriented expense intelligence platform with:
 - Node.js backend API with PostgreSQL
 - Python FastAPI ML microservice for forecasting and categorization
 
+## Quick Links
+
+- [Architecture](#project-structure)
+- [Local Setup](#quick-start)
+- [CI](#ci)
+- [Production & Azure CD](#production-readiness--azure-deployment)
+- [Contributing](#contributing)
+- [Security](#security)
+
 ## Project Structure
 
 - `frontend/` → React + Vite + Recharts
@@ -78,10 +87,10 @@ cd ml-service
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn app:app --reload --port 8000
+uvicorn app:app --reload --port 8001
 ```
 
-ML service runs at `http://localhost:8000`.
+ML service runs at `http://localhost:8001`.
 
 ### 5) Optional seed data (Prisma)
 
@@ -214,8 +223,7 @@ Prepared assets:
 
 1. Add repository secrets:
 
-  - `AZURE_CLIENT_ID`
-  - `AZURE_TENANT_ID`
+  - `AZURE_CREDENTIALS`
   - `AZ_SUBSCRIPTION_ID`
   - `AZ_LOCATION`
   - `AZ_RESOURCE_GROUP`
@@ -298,3 +306,11 @@ Auth endpoints:
 ## License
 
 MIT. See `LICENSE`.
+
+## Contributing
+
+See `CONTRIBUTING.md`.
+
+## Security
+
+See `SECURITY.md`.
