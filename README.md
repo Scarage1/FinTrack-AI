@@ -221,28 +221,31 @@ Prepared assets:
 
 ### Deploy through GitHub Actions (recommended)
 
-1. Add repository secrets:
+1. Configure Azure authentication (choose one):
 
-  - `AZURE_CREDENTIALS`
-  - `AZ_SUBSCRIPTION_ID`
-  - `AZ_LOCATION`
-  - `AZ_RESOURCE_GROUP`
+   - OIDC (recommended): `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZ_SUBSCRIPTION_ID`
+   - Service Principal JSON: `AZURE_CREDENTIALS`
+
+2. Add required deployment secrets:
   - `AZ_ACR_NAME`
-  - `AZ_CONTAINERAPPS_ENV`
   - `AZ_DB_SERVER`
   - `AZ_DB_ADMIN_USER`
   - `AZ_DB_ADMIN_PASSWORD`
   - `JWT_SECRET`
 
-2. Optional secrets (recommended):
+3. Optional secrets (recommended):
+
+  - `AZ_LOCATION` (default: `centralindia`)
+  - `AZ_RESOURCE_GROUP` (default: `rg-fintrack-prod`)
+  - `AZ_CONTAINERAPPS_ENV` (default: `cae-fintrack-prod`)
 
   - `CORS_ORIGIN`
-  - `AZ_DB_NAME`
-  - `BACKEND_APP_NAME`
-  - `FRONTEND_APP_NAME`
-  - `ML_APP_NAME`
+  - `AZ_DB_NAME` (default: `expense_tracker`)
+  - `BACKEND_APP_NAME` (default: `fintrack-backend`)
+  - `FRONTEND_APP_NAME` (default: `fintrack-frontend`)
+  - `ML_APP_NAME` (default: `fintrack-ml-service`)
 
-3. Open **Actions** → **Deploy to Azure Container Apps** → **Run workflow**.
+4. Open **Actions** → **Deploy to Azure Container Apps** → **Run workflow**.
 
 The workflow builds Docker images on the runner and pushes directly to ACR (no ACR Tasks dependency), then provisions or updates Container Apps and PostgreSQL resources.
 

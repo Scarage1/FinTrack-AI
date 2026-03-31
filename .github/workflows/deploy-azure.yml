@@ -60,7 +60,7 @@ jobs:
           az version
           docker --version
 
-      - name: Deploy
+      - name: Validate deployment variables
         env:
           AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }}
           AZ_LOCATION: ${{ secrets.AZ_LOCATION }}
@@ -71,12 +71,42 @@ jobs:
           AZ_DB_ADMIN_USER: ${{ secrets.AZ_DB_ADMIN_USER }}
           AZ_DB_ADMIN_PASSWORD: ${{ secrets.AZ_DB_ADMIN_PASSWORD }}
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
-          AZ_DB_NAME: ${{ secrets.AZ_DB_NAME }}
-          BACKEND_APP_NAME: ${{ secrets.BACKEND_APP_NAME }}
-          FRONTEND_APP_NAME: ${{ secrets.FRONTEND_APP_NAME }}
-          ML_APP_NAME: ${{ secrets.ML_APP_NAME }}
         run: |
           set -euo pipefail
+          missing=()
+
+          [[ -z "${AZ_SUBSCRIPTION_ID}" && -z "${OIDC_SUBSCRIPTION_ID}" ]] && missing+=("AZ_SUBSCRIPTION_ID (or OIDC subscription-id)")
+          [[ -z "${AZ_ACR_NAME}" ]] && missing+=("AZ_ACR_NAME")
+          [[ -z "${AZ_DB_SERVER}" ]] && missing+=("AZ_DB_SERVER")
+          [[ -z "${AZ_DB_ADMIN_USER}" ]] && missing+=("AZ_DB_ADMIN_USER")
+          [[ -z "${AZ_DB_ADMIN_PASSWORD}" ]] && missing+=("AZ_DB_ADMIN_PASSWORD")
+          [[ -z "${JWT_SECRET}" ]] && missing+=("JWT_SECRET")
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "Missing required deployment secrets/variables:"
+            for key in "${missing[@]}"; do echo " - $key"; done
+            echo "Set these in Repository Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Deploy
+        env:
+          AZ_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }}
+          AZ_LOCATION: ${{ secrets.AZ_LOCATION || 'centralindia' }}
+          AZ_RESOURCE_GROUP: ${{ secrets.AZ_RESOURCE_GROUP || 'rg-fintrack-prod' }}
+          AZ_ACR_NAME: ${{ secrets.AZ_ACR_NAME }}
+          AZ_CONTAINERAPPS_ENV: ${{ secrets.AZ_CONTAINERAPPS_ENV || 'cae-fintrack-prod' }}
+          AZ_DB_SERVER: ${{ secrets.AZ_DB_SERVER }}
+          AZ_DB_ADMIN_USER: ${{ secrets.AZ_DB_ADMIN_USER }}
+          AZ_DB_ADMIN_PASSWORD: ${{ secrets.AZ_DB_ADMIN_PASSWORD }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
+          AZ_DB_NAME: ${{ secrets.AZ_DB_NAME || 'expense_tracker' }}
+          BACKEND_APP_NAME: ${{ secrets.BACKEND_APP_NAME || 'fintrack-backend' }}
+          FRONTEND_APP_NAME: ${{ secrets.FRONTEND_APP_NAME || 'fintrack-frontend' }}
+          ML_APP_NAME: ${{ secrets.ML_APP_NAME || 'fintrack-ml-service' }}
+        run: |
+          set -euo pipefail
+          export AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:-$OIDC_SUBSCRIPTION_ID}"
           chmod +x deploy/azure/deploy.sh
           ./deploy/azure/deploy.sh
