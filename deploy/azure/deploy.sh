@@ -39,7 +39,10 @@ az group create -n "$AZ_RESOURCE_GROUP" -l "$AZ_LOCATION" >/dev/null
 
 # Registry
 az acr create -n "$AZ_ACR_NAME" -g "$AZ_RESOURCE_GROUP" --sku Basic >/dev/null || true
+az acr update -n "$AZ_ACR_NAME" -g "$AZ_RESOURCE_GROUP" --admin-enabled true >/dev/null
 ACR_LOGIN_SERVER=$(az acr show -n "$AZ_ACR_NAME" -g "$AZ_RESOURCE_GROUP" --query loginServer -o tsv)
+ACR_USERNAME=$(az acr credential show -n "$AZ_ACR_NAME" -g "$AZ_RESOURCE_GROUP" --query username -o tsv)
+ACR_PASSWORD=$(az acr credential show -n "$AZ_ACR_NAME" -g "$AZ_RESOURCE_GROUP" --query 'passwords[0].value' -o tsv)
 
 # Docker auth to ACR (avoids ACR Tasks, works in GitHub Actions runners)
 ACR_TOKEN=$(az acr login -n "$AZ_ACR_NAME" --expose-token --query accessToken -o tsv)
@@ -119,7 +122,9 @@ else
     --image "${ACR_LOGIN_SERVER}/fintrack-ml:latest" \
     --target-port 8001 \
     --ingress external \
-    --registry-server "$ACR_LOGIN_SERVER" >/dev/null
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_USERNAME" \
+    --registry-password "$ACR_PASSWORD" >/dev/null
 fi
 ML_URL=$(az containerapp show -n "$ML_APP_NAME" -g "$AZ_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
 
@@ -139,6 +144,8 @@ else
     --target-port 4000 \
     --ingress external \
     --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_USERNAME" \
+    --registry-password "$ACR_PASSWORD" \
     --env-vars NODE_ENV=production PORT=4000 JWT_SECRET="$JWT_SECRET" DATABASE_URL="$DATABASE_URL" ML_BASE_URL="https://${ML_URL}" CORS_ORIGIN="$CORS_ORIGIN" ML_TIMEOUT_MS="$ML_TIMEOUT_MS" >/dev/null
 fi
 BACKEND_URL=$(az containerapp show -n "$BACKEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
@@ -163,7 +170,9 @@ else
     --image "${ACR_LOGIN_SERVER}/fintrack-frontend:latest" \
     --target-port 80 \
     --ingress external \
-    --registry-server "$ACR_LOGIN_SERVER" >/dev/null
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_USERNAME" \
+    --registry-password "$ACR_PASSWORD" >/dev/null
 fi
 FRONTEND_URL=$(az containerapp show -n "$FRONTEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
 
