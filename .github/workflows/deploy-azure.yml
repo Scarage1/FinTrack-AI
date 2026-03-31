@@ -25,6 +25,7 @@ jobs:
       OIDC_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       OIDC_SUBSCRIPTION_ID: ${{ secrets.AZ_SUBSCRIPTION_ID }}
       SP_CREDENTIALS_JSON: ${{ secrets.AZURE_CREDENTIALS }}
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     permissions:
       id-token: write
       contents: read
@@ -105,6 +106,7 @@ jobs:
           BACKEND_APP_NAME: ${{ secrets.BACKEND_APP_NAME || 'fintrack-backend' }}
           FRONTEND_APP_NAME: ${{ secrets.FRONTEND_APP_NAME || 'fintrack-frontend' }}
           ML_APP_NAME: ${{ secrets.ML_APP_NAME || 'fintrack-ml-service' }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           set -euo pipefail
           export AZ_SUBSCRIPTION_ID="${AZ_SUBSCRIPTION_ID:-$OIDC_SUBSCRIPTION_ID}"

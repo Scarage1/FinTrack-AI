@@ -13,6 +13,7 @@ set -euo pipefail
 # ML_APP_NAME (default: fintrack-ml-service)
 # CORS_ORIGIN (default: *)
 # ML_TIMEOUT_MS (default: 3000)
+# IMAGE_TAG (default: latest)
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 
@@ -32,6 +33,7 @@ FRONTEND_APP_NAME="${FRONTEND_APP_NAME:-fintrack-frontend}"
 ML_APP_NAME="${ML_APP_NAME:-fintrack-ml-service}"
 CORS_ORIGIN="${CORS_ORIGIN:-*}"
 ML_TIMEOUT_MS="${ML_TIMEOUT_MS:-3000}"
+IMAGE_TAG="${IMAGE_TAG:-latest}"
 
 az account set --subscription "$AZ_SUBSCRIPTION_ID"
 az extension add --name containerapp --upgrade --yes >/dev/null
@@ -49,11 +51,11 @@ ACR_TOKEN=$(az acr login -n "$AZ_ACR_NAME" --expose-token --query accessToken -o
 docker login "$ACR_LOGIN_SERVER" --username 00000000-0000-0000-0000-000000000000 --password "$ACR_TOKEN" >/dev/null
 
 # Build/push backend + ML first
-docker build -t "$ACR_LOGIN_SERVER/fintrack-backend:latest" "$PROJECT_ROOT/backend"
-docker push "$ACR_LOGIN_SERVER/fintrack-backend:latest"
+docker build -t "$ACR_LOGIN_SERVER/fintrack-backend:${IMAGE_TAG}" "$PROJECT_ROOT/backend"
+docker push "$ACR_LOGIN_SERVER/fintrack-backend:${IMAGE_TAG}"
 
-docker build -t "$ACR_LOGIN_SERVER/fintrack-ml:latest" "$PROJECT_ROOT/ml-service"
-docker push "$ACR_LOGIN_SERVER/fintrack-ml:latest"
+docker build -t "$ACR_LOGIN_SERVER/fintrack-ml:${IMAGE_TAG}" "$PROJECT_ROOT/ml-service"
+docker push "$ACR_LOGIN_SERVER/fintrack-ml:${IMAGE_TAG}"
 
 # Container Apps environment
 if az containerapp env show -n "$AZ_CONTAINERAPPS_ENV" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&1; then
@@ -104,7 +106,9 @@ if ! az postgres flexible-server show -g "$AZ_RESOURCE_GROUP" -n "$DB_SERVER_ACT
   fi
 fi
 
-az postgres flexible-server db create -g "$AZ_RESOURCE_GROUP" -s "$DB_SERVER_ACTUAL" -d "$AZ_DB_NAME" >/dev/null || true
+if ! az postgres flexible-server db create -g "$AZ_RESOURCE_GROUP" --server-name "$DB_SERVER_ACTUAL" -n "$AZ_DB_NAME" >/dev/null 2>&1; then
+  az postgres flexible-server db create -g "$AZ_RESOURCE_GROUP" -s "$DB_SERVER_ACTUAL" -d "$AZ_DB_NAME" >/dev/null || true
+fi
 DB_FQDN=$(az postgres flexible-server show -g "$AZ_RESOURCE_GROUP" -n "$DB_SERVER_ACTUAL" --query fullyQualifiedDomainName -o tsv)
 DATABASE_URL="postgres://${AZ_DB_ADMIN_USER}:${AZ_DB_ADMIN_PASSWORD}@${DB_FQDN}:5432/${AZ_DB_NAME}?sslmode=require"
 
@@ -119,13 +123,13 @@ if az containerapp show -n "$ML_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&
   az containerapp update \
     -n "$ML_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
-    --image "${ACR_LOGIN_SERVER}/fintrack-ml:latest" >/dev/null
+    --image "${ACR_LOGIN_SERVER}/fintrack-ml:${IMAGE_TAG}" >/dev/null
 else
   az containerapp create \
     -n "$ML_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
     --environment "$ENV_RESOURCE_ID" \
-    --image "${ACR_LOGIN_SERVER}/fintrack-ml:latest" \
+    --image "${ACR_LOGIN_SERVER}/fintrack-ml:${IMAGE_TAG}" \
     --target-port 8001 \
     --ingress external \
     --registry-server "$ACR_LOGIN_SERVER" \
@@ -145,14 +149,14 @@ if az containerapp show -n "$BACKEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/nul
   az containerapp update \
     -n "$BACKEND_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
-    --image "${ACR_LOGIN_SERVER}/fintrack-backend:latest" \
+    --image "${ACR_LOGIN_SERVER}/fintrack-backend:${IMAGE_TAG}" \
     --set-env-vars NODE_ENV=production PORT=4000 JWT_SECRET="$JWT_SECRET" DATABASE_URL="$DATABASE_URL" ML_BASE_URL="https://${ML_URL}" CORS_ORIGIN="$CORS_ORIGIN" ML_TIMEOUT_MS="$ML_TIMEOUT_MS" >/dev/null
 else
   az containerapp create \
     -n "$BACKEND_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
     --environment "$ENV_RESOURCE_ID" \
-    --image "${ACR_LOGIN_SERVER}/fintrack-backend:latest" \
+    --image "${ACR_LOGIN_SERVER}/fintrack-backend:${IMAGE_TAG}" \
     --target-port 4000 \
     --ingress external \
     --registry-server "$ACR_LOGIN_SERVER" \
@@ -165,9 +169,9 @@ BACKEND_URL=$(az containerapp show -n "$BACKEND_APP_NAME" -g "$AZ_RESOURCE_GROUP
 # Deploy frontend with backend URL
 docker build \
   --build-arg VITE_API_BASE_URL="https://${BACKEND_URL}/api" \
-  -t "$ACR_LOGIN_SERVER/fintrack-frontend:latest" \
+  -t "$ACR_LOGIN_SERVER/fintrack-frontend:${IMAGE_TAG}" \
   "$PROJECT_ROOT/frontend"
-docker push "$ACR_LOGIN_SERVER/fintrack-frontend:latest"
+docker push "$ACR_LOGIN_SERVER/fintrack-frontend:${IMAGE_TAG}"
 
 if az containerapp show -n "$FRONTEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&1; then
   az containerapp registry set \
@@ -179,13 +183,13 @@ if az containerapp show -n "$FRONTEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/nu
   az containerapp update \
     -n "$FRONTEND_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
-    --image "${ACR_LOGIN_SERVER}/fintrack-frontend:latest" >/dev/null
+    --image "${ACR_LOGIN_SERVER}/fintrack-frontend:${IMAGE_TAG}" >/dev/null
 else
   az containerapp create \
     -n "$FRONTEND_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
     --environment "$ENV_RESOURCE_ID" \
-    --image "${ACR_LOGIN_SERVER}/fintrack-frontend:latest" \
+    --image "${ACR_LOGIN_SERVER}/fintrack-frontend:${IMAGE_TAG}" \
     --target-port 80 \
     --ingress external \
     --registry-server "$ACR_LOGIN_SERVER" \
