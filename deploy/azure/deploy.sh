@@ -53,46 +53,94 @@ docker build -t "$ACR_LOGIN_SERVER/fintrack-ml:latest" "$PROJECT_ROOT/ml-service
 docker push "$ACR_LOGIN_SERVER/fintrack-ml:latest"
 
 # Container Apps environment
-az containerapp env create -n "$AZ_CONTAINERAPPS_ENV" -g "$AZ_RESOURCE_GROUP" -l "$AZ_LOCATION" >/dev/null || true
+if az containerapp env show -n "$AZ_CONTAINERAPPS_ENV" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&1; then
+  ENV_RESOURCE_ID=$(az containerapp env show -n "$AZ_CONTAINERAPPS_ENV" -g "$AZ_RESOURCE_GROUP" --query id -o tsv)
+else
+  if az containerapp env create -n "$AZ_CONTAINERAPPS_ENV" -g "$AZ_RESOURCE_GROUP" -l "$AZ_LOCATION" >/dev/null 2>&1; then
+    ENV_RESOURCE_ID=$(az containerapp env show -n "$AZ_CONTAINERAPPS_ENV" -g "$AZ_RESOURCE_GROUP" --query id -o tsv)
+  else
+    echo "Container Apps environment creation failed (likely regional quota). Attempting to reuse an existing environment in $AZ_LOCATION..."
+    ENV_RESOURCE_ID=$(az containerapp env list --query "[?location=='$AZ_LOCATION'] | [0].id" -o tsv)
+    if [[ -z "${ENV_RESOURCE_ID}" ]]; then
+      echo "No existing Container Apps environment found in $AZ_LOCATION."
+      echo "Set AZ_CONTAINERAPPS_ENV to an existing environment or choose a location with available quota."
+      exit 1
+    fi
+  fi
+fi
+
+echo "Using Container Apps environment: $ENV_RESOURCE_ID"
 
 # PostgreSQL Flexible Server
-az postgres flexible-server create \
-  -g "$AZ_RESOURCE_GROUP" \
-  -n "$AZ_DB_SERVER" \
-  -l "$AZ_LOCATION" \
-  -u "$AZ_DB_ADMIN_USER" \
-  -p "$AZ_DB_ADMIN_PASSWORD" \
-  --sku-name Standard_B1ms \
-  --tier Burstable \
-  --storage-size 32 \
-  --version 16 \
-  --yes >/dev/null || true
+DB_SERVER_ACTUAL="$AZ_DB_SERVER"
+if ! az postgres flexible-server show -g "$AZ_RESOURCE_GROUP" -n "$DB_SERVER_ACTUAL" >/dev/null 2>&1; then
+  if ! az postgres flexible-server create \
+    -g "$AZ_RESOURCE_GROUP" \
+    -n "$DB_SERVER_ACTUAL" \
+    -l "$AZ_LOCATION" \
+    -u "$AZ_DB_ADMIN_USER" \
+    -p "$AZ_DB_ADMIN_PASSWORD" \
+    --sku-name Standard_B1ms \
+    --tier Burstable \
+    --storage-size 32 \
+    --version 16 \
+    --yes >/dev/null 2>&1; then
+    DB_SERVER_ACTUAL="${AZ_DB_SERVER}$(date +%s | tail -c 5)"
+    echo "Primary DB server name unavailable. Retrying with: $DB_SERVER_ACTUAL"
+    az postgres flexible-server create \
+      -g "$AZ_RESOURCE_GROUP" \
+      -n "$DB_SERVER_ACTUAL" \
+      -l "$AZ_LOCATION" \
+      -u "$AZ_DB_ADMIN_USER" \
+      -p "$AZ_DB_ADMIN_PASSWORD" \
+      --sku-name Standard_B1ms \
+      --tier Burstable \
+      --storage-size 32 \
+      --version 16 \
+      --yes >/dev/null
+  fi
+fi
 
-az postgres flexible-server db create -g "$AZ_RESOURCE_GROUP" -s "$AZ_DB_SERVER" -d "$AZ_DB_NAME" >/dev/null || true
-DB_FQDN=$(az postgres flexible-server show -g "$AZ_RESOURCE_GROUP" -n "$AZ_DB_SERVER" --query fullyQualifiedDomainName -o tsv)
+az postgres flexible-server db create -g "$AZ_RESOURCE_GROUP" -s "$DB_SERVER_ACTUAL" -d "$AZ_DB_NAME" >/dev/null || true
+DB_FQDN=$(az postgres flexible-server show -g "$AZ_RESOURCE_GROUP" -n "$DB_SERVER_ACTUAL" --query fullyQualifiedDomainName -o tsv)
 DATABASE_URL="postgres://${AZ_DB_ADMIN_USER}:${AZ_DB_ADMIN_PASSWORD}@${DB_FQDN}:5432/${AZ_DB_NAME}?sslmode=require"
 
 # Deploy ML app
-az containerapp up \
-  -n "$ML_APP_NAME" \
-  -g "$AZ_RESOURCE_GROUP" \
-  --environment "$AZ_CONTAINERAPPS_ENV" \
-  --image "${ACR_LOGIN_SERVER}/fintrack-ml:latest" \
-  --target-port 8001 \
-  --ingress external \
-  --registry-server "$ACR_LOGIN_SERVER" >/dev/null
+if az containerapp show -n "$ML_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&1; then
+  az containerapp update \
+    -n "$ML_APP_NAME" \
+    -g "$AZ_RESOURCE_GROUP" \
+    --image "${ACR_LOGIN_SERVER}/fintrack-ml:latest" >/dev/null
+else
+  az containerapp create \
+    -n "$ML_APP_NAME" \
+    -g "$AZ_RESOURCE_GROUP" \
+    --environment "$ENV_RESOURCE_ID" \
+    --image "${ACR_LOGIN_SERVER}/fintrack-ml:latest" \
+    --target-port 8001 \
+    --ingress external \
+    --registry-server "$ACR_LOGIN_SERVER" >/dev/null
+fi
 ML_URL=$(az containerapp show -n "$ML_APP_NAME" -g "$AZ_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
 
 # Deploy backend
-az containerapp up \
-  -n "$BACKEND_APP_NAME" \
-  -g "$AZ_RESOURCE_GROUP" \
-  --environment "$AZ_CONTAINERAPPS_ENV" \
-  --image "${ACR_LOGIN_SERVER}/fintrack-backend:latest" \
-  --target-port 4000 \
-  --ingress external \
-  --registry-server "$ACR_LOGIN_SERVER" \
-  --env-vars NODE_ENV=production PORT=4000 JWT_SECRET="$JWT_SECRET" DATABASE_URL="$DATABASE_URL" ML_BASE_URL="https://${ML_URL}" CORS_ORIGIN="$CORS_ORIGIN" ML_TIMEOUT_MS="$ML_TIMEOUT_MS" >/dev/null
+if az containerapp show -n "$BACKEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&1; then
+  az containerapp update \
+    -n "$BACKEND_APP_NAME" \
+    -g "$AZ_RESOURCE_GROUP" \
+    --image "${ACR_LOGIN_SERVER}/fintrack-backend:latest" \
+    --set-env-vars NODE_ENV=production PORT=4000 JWT_SECRET="$JWT_SECRET" DATABASE_URL="$DATABASE_URL" ML_BASE_URL="https://${ML_URL}" CORS_ORIGIN="$CORS_ORIGIN" ML_TIMEOUT_MS="$ML_TIMEOUT_MS" >/dev/null
+else
+  az containerapp create \
+    -n "$BACKEND_APP_NAME" \
+    -g "$AZ_RESOURCE_GROUP" \
+    --environment "$ENV_RESOURCE_ID" \
+    --image "${ACR_LOGIN_SERVER}/fintrack-backend:latest" \
+    --target-port 4000 \
+    --ingress external \
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --env-vars NODE_ENV=production PORT=4000 JWT_SECRET="$JWT_SECRET" DATABASE_URL="$DATABASE_URL" ML_BASE_URL="https://${ML_URL}" CORS_ORIGIN="$CORS_ORIGIN" ML_TIMEOUT_MS="$ML_TIMEOUT_MS" >/dev/null
+fi
 BACKEND_URL=$(az containerapp show -n "$BACKEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
 
 # Deploy frontend with backend URL
@@ -102,14 +150,21 @@ docker build \
   "$PROJECT_ROOT/frontend"
 docker push "$ACR_LOGIN_SERVER/fintrack-frontend:latest"
 
-az containerapp up \
-  -n "$FRONTEND_APP_NAME" \
-  -g "$AZ_RESOURCE_GROUP" \
-  --environment "$AZ_CONTAINERAPPS_ENV" \
-  --image "${ACR_LOGIN_SERVER}/fintrack-frontend:latest" \
-  --target-port 80 \
-  --ingress external \
-  --registry-server "$ACR_LOGIN_SERVER" >/dev/null
+if az containerapp show -n "$FRONTEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&1; then
+  az containerapp update \
+    -n "$FRONTEND_APP_NAME" \
+    -g "$AZ_RESOURCE_GROUP" \
+    --image "${ACR_LOGIN_SERVER}/fintrack-frontend:latest" >/dev/null
+else
+  az containerapp create \
+    -n "$FRONTEND_APP_NAME" \
+    -g "$AZ_RESOURCE_GROUP" \
+    --environment "$ENV_RESOURCE_ID" \
+    --image "${ACR_LOGIN_SERVER}/fintrack-frontend:latest" \
+    --target-port 80 \
+    --ingress external \
+    --registry-server "$ACR_LOGIN_SERVER" >/dev/null
+fi
 FRONTEND_URL=$(az containerapp show -n "$FRONTEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" --query properties.configuration.ingress.fqdn -o tsv)
 
 echo "Deployment complete"
