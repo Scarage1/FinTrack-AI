@@ -288,69 +288,71 @@ export default function App() {
           </nav>
         </header>
 
-        <section className="landing-hero">
-          <div className="hero-content">
-            <div className="badge">AI-Powered Finance v2.0</div>
-            <h1>Automate your wealth tracking.</h1>
-            <p className="hero-subtitle">
-              Instantly categorize spending, detect anomalies, and forecast your financial future with enterprise-grade machine learning models built for personal finance.
-            </p>
-            <div className="hero-actions">
-              <button className="hero-btn-primary" onClick={() => {
-                setAuthMode("register");
-                setShowAuth(true);
-              }}>Start Tracking Free</button>
-              <button className="hero-btn-secondary" onClick={() => {
-                setAuthMode("login");
-                setShowAuth(true);
-              }}>View Live Demo</button>
-            </div>
-            <div className="hero-features">
-              <span>✓ ML Categorization</span>
-              <span>✓ Spend Forecast</span>
-              <span>✓ Smart Alerts</span>
-            </div>
-          </div>
-
-          <div className="hero-visual">
-            <div className="mockup-window">
-              <div className="mockup-header">
-                <span className="dot red"></span>
-                <span className="dot yellow"></span>
-                <span className="dot green"></span>
+        <main>
+          <section className="landing-hero">
+            <div className="hero-content">
+              <div className="badge">AI-Powered Finance v2.0</div>
+              <h1>Automate your wealth tracking.</h1>
+              <p className="hero-subtitle">
+                Instantly categorize spending, detect anomalies, and forecast your financial future with enterprise-grade machine learning models built for personal finance.
+              </p>
+              <div className="hero-actions">
+                <button className="hero-btn-primary" onClick={() => {
+                  setAuthMode("register");
+                  setShowAuth(true);
+                }}>Start Tracking Free</button>
+                <button className="hero-btn-secondary" onClick={() => {
+                  setAuthMode("login");
+                  setShowAuth(true);
+                }}>View Live Demo</button>
               </div>
-              <div className="mockup-body">
-                <div className="mockup-sidebar"></div>
-                <div className="mockup-content">
-                  <div className="mockup-kpi-row">
-                    <div className="mockup-kpi"></div>
-                    <div className="mockup-kpi"></div>
-                    <div className="mockup-kpi"></div>
+              <div className="hero-features">
+                <span>✓ ML Categorization</span>
+                <span>✓ Spend Forecast</span>
+                <span>✓ Smart Alerts</span>
+              </div>
+            </div>
+
+            <div className="hero-visual">
+              <div className="mockup-window">
+                <div className="mockup-header">
+                  <span className="dot red"></span>
+                  <span className="dot yellow"></span>
+                  <span className="dot green"></span>
+                </div>
+                <div className="mockup-body">
+                  <div className="mockup-sidebar"></div>
+                  <div className="mockup-content">
+                    <div className="mockup-kpi-row">
+                      <div className="mockup-kpi"></div>
+                      <div className="mockup-kpi"></div>
+                      <div className="mockup-kpi"></div>
+                    </div>
+                    <div className="mockup-chart"></div>
                   </div>
-                  <div className="mockup-chart"></div>
                 </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section className="landing-features-grid">
-          <div className="feature-card">
-            <div className="feature-icon">🧠</div>
-            <h3>Smart Categorization</h3>
-            <p>Our ML model automatically sorts your transactions into intuitive categories accurately over time.</p>
-          </div>
-          <div className="feature-card">
-            <div className="feature-icon">📈</div>
-            <h3>Predictive Insights</h3>
-            <p>Forecast your month-end balance and get intelligent recommendations on to cut unnecessary spending.</p>
-          </div>
-          <div className="feature-card">
-            <div className="feature-icon">🚨</div>
-            <h3>Anomaly Detection</h3>
-            <p>Get instant alerts when the system detects unusual spending patterns using z-score outlier algorithms.</p>
-          </div>
-        </section>
+          <section className="landing-features-grid">
+            <div className="feature-card">
+              <div className="feature-icon">🧠</div>
+              <h2>Smart Categorization</h2>
+              <p>Our ML model automatically sorts your transactions into intuitive categories accurately over time.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">📈</div>
+              <h2>Predictive Insights</h2>
+              <p>Forecast your month-end balance and get intelligent recommendations on to cut unnecessary spending.</p>
+            </div>
+            <div className="feature-card">
+              <div className="feature-icon">🚨</div>
+              <h2>Anomaly Detection</h2>
+              <p>Get instant alerts when the system detects unusual spending patterns using z-score outlier algorithms.</p>
+            </div>
+          </section>
+        </main>
       </div>
     );
   }

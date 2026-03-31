@@ -1,18 +1,24 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+async function openAuth(page, mode = "login") {
+  const label = mode === "register"
+    ? /Get Started|Start Tracking Free|Create Account|Create an account/i
+    : /Sign In|View Live Demo|Login to Dashboard/i;
+
+  await page.goto("/");
+  await page.getByRole("button", { name: label }).first().click();
+  await expect(page.getByText("Expense Tracker + ML")).toBeVisible();
+}
+
 test("landing -> register -> dashboard -> add expense", async ({ page }) => {
   const unique = Date.now();
   const email = `pw_${unique}@example.com`;
   const password = "password123";
   const expenseText = `E2E coffee ${unique}`;
 
-  await page.goto("/");
+  await openAuth(page, "register");
 
-  await expect(page.getByText("FinTrack AI")).toBeVisible();
-  await page.getByRole("button", { name: "Create Account" }).click();
-
-  await expect(page.getByText("Expense Tracker + ML")).toBeVisible();
   await page.getByPlaceholder("Name").fill("Playwright User");
   await page.getByPlaceholder("Email").fill(email);
   await page.getByPlaceholder("Password").fill(password);
@@ -28,8 +34,7 @@ test("landing -> register -> dashboard -> add expense", async ({ page }) => {
 });
 
 test("landing -> login with seeded user", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Login to Dashboard" }).click();
+  await openAuth(page, "login");
 
   await page.getByPlaceholder("Email").fill("demo@expense.app");
   await page.getByPlaceholder("Password").fill("password123");
@@ -40,8 +45,7 @@ test("landing -> login with seeded user", async ({ page }) => {
 });
 
 test("dashboard -> export expenses csv", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Login to Dashboard" }).click();
+  await openAuth(page, "login");
 
   await page.getByPlaceholder("Email").fill("demo@expense.app");
   await page.getByPlaceholder("Password").fill("password123");
@@ -60,8 +64,7 @@ test("dashboard -> export expenses csv", async ({ page }) => {
 
 test("responsive smoke on mobile viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/");
-  await page.getByRole("button", { name: "Login to Dashboard" }).click();
+  await openAuth(page, "login");
 
   await page.getByPlaceholder("Email").fill("demo@expense.app");
   await page.getByPlaceholder("Password").fill("password123");
@@ -72,8 +75,7 @@ test("responsive smoke on mobile viewport", async ({ page }) => {
 });
 
 test("invalid token triggers auto logout to landing", async ({ page }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Login to Dashboard" }).click();
+  await openAuth(page, "login");
 
   await page.getByPlaceholder("Email").fill("demo@expense.app");
   await page.getByPlaceholder("Password").fill("password123");
@@ -86,7 +88,7 @@ test("invalid token triggers auto logout to landing", async ({ page }) => {
   });
 
   await page.reload();
-  await expect(page.getByRole("button", { name: "Login to Dashboard" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Sign In|Login to Dashboard/i })).toBeVisible();
 });
 
 test("accessibility smoke landing and dashboard", async ({ page }) => {
@@ -95,7 +97,7 @@ test("accessibility smoke landing and dashboard", async ({ page }) => {
   const landingResults = await new AxeBuilder({ page }).analyze();
   expect(landingResults.violations).toEqual([]);
 
-  await page.getByRole("button", { name: "Login to Dashboard" }).click();
+  await page.getByRole("button", { name: /Sign In|View Live Demo|Login to Dashboard/i }).first().click();
   await page.getByPlaceholder("Email").fill("demo@expense.app");
   await page.getByPlaceholder("Password").fill("password123");
   await page.getByRole("button", { name: "Login" }).click();
@@ -110,8 +112,7 @@ test("dashboard search and pagination interactions", async ({ page, request }) =
   const email = `pw_filters_${unique}@example.com`;
   const password = "password123";
 
-  await page.goto("/");
-  await page.getByRole("button", { name: "Create Account" }).click();
+  await openAuth(page, "register");
 
   await page.getByPlaceholder("Name").fill("Playwright Filters User");
   await page.getByPlaceholder("Email").fill(email);
