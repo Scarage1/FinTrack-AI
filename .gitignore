@@ -1,0 +1,23 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+ml-service/venv/
+
+# Environment files
+.env
+backend/.env
+
+# Generated artifacts
+coverage/
+backend/coverage/
+backend/test-results/
+frontend/test-results/
+frontend/playwright-report/
+ml-service/evaluation_report.json

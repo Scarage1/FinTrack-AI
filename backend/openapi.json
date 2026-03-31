@@ -1,0 +1,210 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Expense Tracker API",
+    "version": "1.0.0",
+    "description": "Expense tracker backend API with auth, analytics, prediction and insights."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:4000"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "code": { "type": "string" },
+          "message": { "type": "string" },
+          "details": {},
+          "traceId": { "type": ["string", "null"] }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "Healthy"
+          }
+        }
+      }
+    },
+    "/api/metrics": {
+      "get": {
+        "summary": "Operational metrics snapshot",
+        "responses": {
+          "200": {
+            "description": "Metrics payload"
+          }
+        }
+      }
+    },
+    "/api/openapi.json": {
+      "get": {
+        "summary": "OpenAPI contract",
+        "responses": {
+          "200": {
+            "description": "OpenAPI JSON"
+          }
+        }
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "summary": "Register user",
+        "responses": {
+          "201": { "description": "Registered" },
+          "400": { "description": "Bad request" },
+          "409": { "description": "Conflict" }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "summary": "Login user",
+        "responses": {
+          "200": { "description": "Authenticated" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "summary": "Rotate refresh token and issue new access token",
+        "responses": {
+          "200": { "description": "Token rotated" },
+          "401": { "description": "Invalid refresh token" }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "summary": "Revoke refresh token",
+        "responses": {
+          "204": { "description": "Logged out" }
+        }
+      }
+    },
+    "/api/expenses": {
+      "get": {
+        "summary": "List expenses",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Expense list" },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "summary": "Create expense",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Unique key to deduplicate retried write requests"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Created" },
+          "400": { "description": "Bad request" }
+        }
+      }
+    },
+    "/api/expenses/{id}": {
+      "delete": {
+        "summary": "Delete expense",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "204": { "description": "Deleted" },
+          "400": { "description": "Invalid id" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/expenses/export.csv": {
+      "get": {
+        "summary": "Export filtered expenses as CSV",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "CSV content" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/budgets": {
+      "get": {
+        "summary": "List budgets",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Budgets" }
+        }
+      },
+      "post": {
+        "summary": "Upsert budget",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Unique key to deduplicate retried write requests"
+          }
+        ],
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "201": { "description": "Saved" }
+        }
+      }
+    },
+    "/api/analytics/monthly": {
+      "get": {
+        "summary": "Monthly analytics",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Analytics" }
+        }
+      }
+    },
+    "/api/prediction": {
+      "get": {
+        "summary": "Monthly prediction",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Prediction" }
+        }
+      }
+    },
+    "/api/insights": {
+      "get": {
+        "summary": "Smart insights and budget alerts",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Insights" }
+        }
+      }
+    },
+    "/api/anomalies": {
+      "get": {
+        "summary": "Anomaly detection",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "description": "Anomalies" }
+        }
+      }
+    }
+  }
+}
