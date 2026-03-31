@@ -110,13 +110,16 @@ DATABASE_URL="postgres://${AZ_DB_ADMIN_USER}:${AZ_DB_ADMIN_PASSWORD}@${DB_FQDN}:
 
 # Deploy ML app
 if az containerapp show -n "$ML_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&1; then
+  az containerapp registry set \
+    -n "$ML_APP_NAME" \
+    -g "$AZ_RESOURCE_GROUP" \
+    --server "$ACR_LOGIN_SERVER" \
+    --username "$ACR_USERNAME" \
+    --password "$ACR_PASSWORD" >/dev/null
   az containerapp update \
     -n "$ML_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
-    --image "${ACR_LOGIN_SERVER}/fintrack-ml:latest" \
-    --registry-server "$ACR_LOGIN_SERVER" \
-    --registry-username "$ACR_USERNAME" \
-    --registry-password "$ACR_PASSWORD" >/dev/null
+    --image "${ACR_LOGIN_SERVER}/fintrack-ml:latest" >/dev/null
 else
   az containerapp create \
     -n "$ML_APP_NAME" \
@@ -133,13 +136,16 @@ ML_URL=$(az containerapp show -n "$ML_APP_NAME" -g "$AZ_RESOURCE_GROUP" --query 
 
 # Deploy backend
 if az containerapp show -n "$BACKEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&1; then
+  az containerapp registry set \
+    -n "$BACKEND_APP_NAME" \
+    -g "$AZ_RESOURCE_GROUP" \
+    --server "$ACR_LOGIN_SERVER" \
+    --username "$ACR_USERNAME" \
+    --password "$ACR_PASSWORD" >/dev/null
   az containerapp update \
     -n "$BACKEND_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
     --image "${ACR_LOGIN_SERVER}/fintrack-backend:latest" \
-    --registry-server "$ACR_LOGIN_SERVER" \
-    --registry-username "$ACR_USERNAME" \
-    --registry-password "$ACR_PASSWORD" \
     --set-env-vars NODE_ENV=production PORT=4000 JWT_SECRET="$JWT_SECRET" DATABASE_URL="$DATABASE_URL" ML_BASE_URL="https://${ML_URL}" CORS_ORIGIN="$CORS_ORIGIN" ML_TIMEOUT_MS="$ML_TIMEOUT_MS" >/dev/null
 else
   az containerapp create \
@@ -164,13 +170,16 @@ docker build \
 docker push "$ACR_LOGIN_SERVER/fintrack-frontend:latest"
 
 if az containerapp show -n "$FRONTEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&1; then
+  az containerapp registry set \
+    -n "$FRONTEND_APP_NAME" \
+    -g "$AZ_RESOURCE_GROUP" \
+    --server "$ACR_LOGIN_SERVER" \
+    --username "$ACR_USERNAME" \
+    --password "$ACR_PASSWORD" >/dev/null
   az containerapp update \
     -n "$FRONTEND_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
-    --image "${ACR_LOGIN_SERVER}/fintrack-frontend:latest" \
-    --registry-server "$ACR_LOGIN_SERVER" \
-    --registry-username "$ACR_USERNAME" \
-    --registry-password "$ACR_PASSWORD" >/dev/null
+    --image "${ACR_LOGIN_SERVER}/fintrack-frontend:latest" >/dev/null
 else
   az containerapp create \
     -n "$FRONTEND_APP_NAME" \
