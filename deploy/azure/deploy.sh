@@ -113,7 +113,10 @@ if az containerapp show -n "$ML_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/null 2>&
   az containerapp update \
     -n "$ML_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
-    --image "${ACR_LOGIN_SERVER}/fintrack-ml:latest" >/dev/null
+    --image "${ACR_LOGIN_SERVER}/fintrack-ml:latest" \
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_USERNAME" \
+    --registry-password "$ACR_PASSWORD" >/dev/null
 else
   az containerapp create \
     -n "$ML_APP_NAME" \
@@ -134,6 +137,9 @@ if az containerapp show -n "$BACKEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/nul
     -n "$BACKEND_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
     --image "${ACR_LOGIN_SERVER}/fintrack-backend:latest" \
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_USERNAME" \
+    --registry-password "$ACR_PASSWORD" \
     --set-env-vars NODE_ENV=production PORT=4000 JWT_SECRET="$JWT_SECRET" DATABASE_URL="$DATABASE_URL" ML_BASE_URL="https://${ML_URL}" CORS_ORIGIN="$CORS_ORIGIN" ML_TIMEOUT_MS="$ML_TIMEOUT_MS" >/dev/null
 else
   az containerapp create \
@@ -161,7 +167,10 @@ if az containerapp show -n "$FRONTEND_APP_NAME" -g "$AZ_RESOURCE_GROUP" >/dev/nu
   az containerapp update \
     -n "$FRONTEND_APP_NAME" \
     -g "$AZ_RESOURCE_GROUP" \
-    --image "${ACR_LOGIN_SERVER}/fintrack-frontend:latest" >/dev/null
+    --image "${ACR_LOGIN_SERVER}/fintrack-frontend:latest" \
+    --registry-server "$ACR_LOGIN_SERVER" \
+    --registry-username "$ACR_USERNAME" \
+    --registry-password "$ACR_PASSWORD" >/dev/null
 else
   az containerapp create \
     -n "$FRONTEND_APP_NAME" \
