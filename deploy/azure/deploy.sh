@@ -60,9 +60,9 @@ else
     ENV_RESOURCE_ID=$(az containerapp env show -n "$AZ_CONTAINERAPPS_ENV" -g "$AZ_RESOURCE_GROUP" --query id -o tsv)
   else
     echo "Container Apps environment creation failed (likely regional quota). Attempting to reuse an existing environment in $AZ_LOCATION..."
-    ENV_RESOURCE_ID=$(az containerapp env list --query "[?location=='$AZ_LOCATION'] | [0].id" -o tsv)
+    ENV_RESOURCE_ID=$(az containerapp env list --query "[0].id" -o tsv)
     if [[ -z "${ENV_RESOURCE_ID}" ]]; then
-      echo "No existing Container Apps environment found in $AZ_LOCATION."
+      echo "No existing Container Apps environment found in this subscription."
       echo "Set AZ_CONTAINERAPPS_ENV to an existing environment or choose a location with available quota."
       exit 1
     fi
