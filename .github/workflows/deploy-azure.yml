@@ -33,7 +33,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Azure Login (OIDC)
         if: env.OIDC_CLIENT_ID != '' && env.OIDC_TENANT_ID != '' && env.OIDC_SUBSCRIPTION_ID != ''
